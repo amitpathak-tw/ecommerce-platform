@@ -1,0 +1,21 @@
+server:
+  port: ${SERVER_PORT:8081}
+spring:
+  application:
+    name: product-service
+  threads:
+    virtual:
+      enabled: true
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5433/product_db}
+    username: ${DB_USERNAME:product_user}
+    password: ${DB_PASSWORD:product_password}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: true
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html

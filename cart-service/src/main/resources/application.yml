@@ -1,0 +1,23 @@
+server:
+  port: ${SERVER_PORT:8083}
+
+spring:
+  application:
+    name: cart-service
+  threads:
+    virtual:
+      enabled: true
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5435/cart_db}
+    username: ${DB_USERNAME:cart_user}
+    password: ${DB_PASSWORD:cart_password}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: true
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html

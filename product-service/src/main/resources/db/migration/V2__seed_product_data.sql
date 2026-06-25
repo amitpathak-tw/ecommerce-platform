@@ -1,0 +1,7 @@
+INSERT INTO categories (id, name, description, created_at, updated_at) VALUES
+('00000000-0000-0000-0000-000000000001', 'Mobiles', 'Mobile phones and accessories', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+('00000000-0000-0000-0000-000000000002', 'Laptops', 'Laptops and notebooks', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+
+INSERT INTO products (id, name, description, sku, price, category_id, active, created_at, updated_at) VALUES
+('10000000-0000-0000-0000-000000000001', 'iPhone 15', 'Apple smartphone', 'IPHONE-15', 79999.00, '00000000-0000-0000-0000-000000000001', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+('10000000-0000-0000-0000-000000000002', 'MacBook Air', 'Apple laptop with M3 processor', 'MACBOOK-AIR-M3', 114999.00, '00000000-0000-0000-0000-000000000002', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);

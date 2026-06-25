@@ -1,0 +1,100 @@
+services:
+  product-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: product_db
+      POSTGRES_USER: product_user
+      POSTGRES_PASSWORD: product_password
+    ports:
+      - "5433:5432"
+    volumes:
+      - product-db-data:/var/lib/postgresql/data
+
+  inventory-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: inventory_db
+      POSTGRES_USER: inventory_user
+      POSTGRES_PASSWORD: inventory_password
+    ports:
+      - "5434:5432"
+    volumes:
+      - inventory-db-data:/var/lib/postgresql/data
+
+  cart-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: cart_db
+      POSTGRES_USER: cart_user
+      POSTGRES_PASSWORD: cart_password
+    ports:
+      - "5435:5432"
+    volumes:
+      - cart-db-data:/var/lib/postgresql/data
+
+  order-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: order_db
+      POSTGRES_USER: order_user
+      POSTGRES_PASSWORD: order_password
+    ports:
+      - "5436:5432"
+    volumes:
+      - order-db-data:/var/lib/postgresql/data
+
+  product-service:
+    build:
+      context: ./product-service
+    environment:
+      DB_URL: jdbc:postgresql://product-db:5432/product_db
+      DB_USERNAME: product_user
+      DB_PASSWORD: product_password
+    depends_on:
+      - product-db
+    ports:
+      - "8081:8081"
+
+  inventory-service:
+    build:
+      context: ./inventory-service
+    environment:
+      DB_URL: jdbc:postgresql://inventory-db:5432/inventory_db
+      DB_USERNAME: inventory_user
+      DB_PASSWORD: inventory_password
+    depends_on:
+      - inventory-db
+    ports:
+      - "8082:8082"
+
+  cart-service:
+    build:
+      context: ./cart-service
+    environment:
+      DB_URL: jdbc:postgresql://cart-db:5432/cart_db
+      DB_USERNAME: cart_user
+      DB_PASSWORD: cart_password
+    depends_on:
+      - cart-db
+    ports:
+      - "8083:8083"
+
+  order-service:
+    build:
+      context: ./order-service
+    environment:
+      DB_URL: jdbc:postgresql://order-db:5432/order_db
+      DB_USERNAME: order_user
+      DB_PASSWORD: order_password
+      INVENTORY_BASE_URL: http://inventory-service:8082
+    depends_on:
+      - order-db
+      - inventory-service
+    ports:
+      - "8084:8084"
+
+volumes:
+  product-db-data:
+  inventory-db-data:
+  cart-db-data:
+  order-db-data:
