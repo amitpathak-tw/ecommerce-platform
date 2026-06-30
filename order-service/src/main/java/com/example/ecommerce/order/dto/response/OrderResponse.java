@@ -11,6 +11,17 @@ public record OrderResponse(
         BigDecimal totalAmount,
         String status,
         List<OrderItemResponse> items,
-        Instant createdAt
+        Instant createdAt,
+        String message
 ) {
+    public OrderResponse(
+            UUID id,
+            UUID customerId,
+            BigDecimal totalAmount,
+            String status,
+            List<OrderItemResponse> items,
+            Instant createdAt
+    ) {
+        this(id, customerId, totalAmount, status, items, createdAt, null);
+    }
 }

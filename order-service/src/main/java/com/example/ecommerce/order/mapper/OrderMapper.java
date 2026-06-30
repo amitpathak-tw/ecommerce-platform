@@ -19,7 +19,8 @@ public class OrderMapper {
                 order.getTotalAmount(),
                 order.getStatus().name(),
                 items.stream().map(this::toResponse).toList(),
-                order.getCreatedAt()
+                order.getCreatedAt(),
+                message(order.getStatus().name())
         );
     }
 
@@ -40,5 +41,18 @@ public class OrderMapper {
                 item.getQuantity(),
                 item.getTotalPrice()
         );
+    }
+
+    private String message(String status) {
+        if ("CREATED".equals(status)) {
+            return "Order accepted for asynchronous processing";
+        }
+        if ("CANCELLED".equals(status)) {
+            return "Order workflow was cancelled";
+        }
+        if ("SHIPPED".equals(status) || "CONFIRMED".equals(status)) {
+            return "Order workflow completed successfully";
+        }
+        return "Order workflow is in progress";
     }
 }

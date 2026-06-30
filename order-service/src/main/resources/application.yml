@@ -11,6 +11,20 @@ spring:
     url: ${DB_URL:jdbc:postgresql://localhost:5436/order_db}
     username: ${DB_USERNAME:order_user}
     password: ${DB_PASSWORD:order_password}
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+    template:
+      observation-enabled: true
+    consumer:
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      auto-offset-reset: earliest
+      group-id: order-service
+    listener:
+      observation-enabled: true
   jpa:
     hibernate:
       ddl-auto: validate
@@ -21,6 +35,49 @@ spring:
 services:
   inventory:
     base-url: ${INVENTORY_BASE_URL:http://localhost:8082}
+
+app:
+  kafka:
+    topics:
+      order-events: order.events
+      inventory-events: inventory.events
+      payment-events: payment.events
+      shipping-events: shipping.events
+      dead-letter-events: dead-letter.events
+  outbox:
+    batch-size: ${OUTBOX_BATCH_SIZE:20}
+    max-retries: ${OUTBOX_MAX_RETRIES:5}
+    publish-delay-ms: ${OUTBOX_PUBLISH_DELAY_MS:5000}
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      inventoryServiceCircuitBreaker:
+        slidingWindowSize: 10
+        failureRateThreshold: 50
+        waitDurationInOpenState: 10s
+        permittedNumberOfCallsInHalfOpenState: 3
+  retry:
+    instances:
+      inventoryServiceRetry:
+        maxAttempts: 3
+        waitDuration: 500ms
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  tracing:
+    sampling:
+      probability: 1.0
+  zipkin:
+    tracing:
+      endpoint: ${ZIPKIN_ENDPOINT:http://localhost:9411/api/v2/spans}
 
 springdoc:
   swagger-ui:

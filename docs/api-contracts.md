@@ -176,7 +176,7 @@ Cart response:
 
 Base URL: `http://localhost:8084`
 
-- `POST /api/v1/orders` reserves inventory and places an order.
+- `POST /api/v1/orders` creates an order and starts the asynchronous Kafka saga.
 - `GET /api/v1/orders/{orderId}` returns order details.
 - `GET /api/v1/orders/{orderId}/status` returns current status.
 - `GET /api/v1/orders/customer/{customerId}` returns customer orders.
@@ -205,7 +205,7 @@ Order response:
   "id": "uuid",
   "customerId": "30000000-0000-0000-0000-000000000001",
   "totalAmount": 159998.00,
-  "status": "CONFIRMED",
+  "status": "CREATED",
   "items": [
     {
       "productId": "10000000-0000-0000-0000-000000000001",
@@ -215,6 +215,52 @@ Order response:
       "totalPrice": 159998.00
     }
   ],
-  "createdAt": "2026-06-24T10:00:00Z"
+  "createdAt": "2026-06-24T10:00:00Z",
+  "message": "Order accepted for asynchronous processing"
+}
+```
+
+Order status values include `CREATED`, `INVENTORY_RESERVED`, `INVENTORY_FAILED`, `PAYMENT_PROCESSED`, `PAYMENT_FAILED`, `SHIPPED`, `CONFIRMED`, and `CANCELLED`.
+
+## Payment Service
+
+Base URL: `http://localhost:8085`
+
+- `GET /api/v1/payments/{paymentId}` returns a payment.
+- `GET /api/v1/payments/order/{orderId}` returns the payment for an order.
+
+Payment response:
+
+```json
+{
+  "id": "uuid",
+  "orderId": "uuid",
+  "customerId": "30000000-0000-0000-0000-000000000001",
+  "amount": 159998.00,
+  "status": "PROCESSED",
+  "reason": null,
+  "createdAt": "2026-06-29T10:00:00Z",
+  "processedAt": "2026-06-29T10:00:01Z"
+}
+```
+
+## Shipping Service
+
+Base URL: `http://localhost:8086`
+
+- `GET /api/v1/shipments/{shipmentId}` returns a shipment.
+- `GET /api/v1/shipments/order/{orderId}` returns the shipment for an order.
+
+Shipment response:
+
+```json
+{
+  "id": "uuid",
+  "orderId": "uuid",
+  "paymentId": "uuid",
+  "trackingNumber": "TRK-123456",
+  "status": "SHIPPED",
+  "createdAt": "2026-06-29T10:00:01Z",
+  "shippedAt": "2026-06-29T10:00:02Z"
 }
 ```

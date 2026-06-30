@@ -9,6 +9,11 @@ services:
       - "5433:5432"
     volumes:
       - product-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U product_user -d product_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   inventory-db:
     image: postgres:16-alpine
@@ -20,6 +25,11 @@ services:
       - "5434:5432"
     volumes:
       - inventory-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U inventory_user -d inventory_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   cart-db:
     image: postgres:16-alpine
@@ -31,6 +41,11 @@ services:
       - "5435:5432"
     volumes:
       - cart-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cart_user -d cart_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   order-db:
     image: postgres:16-alpine
@@ -42,6 +57,98 @@ services:
       - "5436:5432"
     volumes:
       - order-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U order_user -d order_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  payment-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: payment_db
+      POSTGRES_USER: payment_user
+      POSTGRES_PASSWORD: payment_password
+    ports:
+      - "5437:5432"
+    volumes:
+      - payment-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U payment_user -d payment_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  shipping-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: shipping_db
+      POSTGRES_USER: shipping_user
+      POSTGRES_PASSWORD: shipping_password
+    ports:
+      - "5438:5432"
+    volumes:
+      - shipping-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U shipping_user -d shipping_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.1
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+
+  kafka:
+    image: confluentinc/cp-kafka:7.6.1
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics --bootstrap-server localhost:9092 --list >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:v0.7.2
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+    ports:
+      - "8090:8080"
+
+  zipkin:
+    image: openzipkin/zipkin:3
+    ports:
+      - "9411:9411"
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
 
   product-service:
     build:
@@ -50,8 +157,12 @@ services:
       DB_URL: jdbc:postgresql://product-db:5432/product_db
       DB_USERNAME: product_user
       DB_PASSWORD: product_password
+      ZIPKIN_ENDPOINT: http://zipkin:9411/api/v2/spans
     depends_on:
-      - product-db
+      product-db:
+        condition: service_healthy
+      zipkin:
+        condition: service_started
     ports:
       - "8081:8081"
 
@@ -62,8 +173,15 @@ services:
       DB_URL: jdbc:postgresql://inventory-db:5432/inventory_db
       DB_USERNAME: inventory_user
       DB_PASSWORD: inventory_password
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      ZIPKIN_ENDPOINT: http://zipkin:9411/api/v2/spans
     depends_on:
-      - inventory-db
+      inventory-db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      zipkin:
+        condition: service_started
     ports:
       - "8082:8082"
 
@@ -74,8 +192,12 @@ services:
       DB_URL: jdbc:postgresql://cart-db:5432/cart_db
       DB_USERNAME: cart_user
       DB_PASSWORD: cart_password
+      ZIPKIN_ENDPOINT: http://zipkin:9411/api/v2/spans
     depends_on:
-      - cart-db
+      cart-db:
+        condition: service_healthy
+      zipkin:
+        condition: service_started
     ports:
       - "8083:8083"
 
@@ -87,14 +209,60 @@ services:
       DB_USERNAME: order_user
       DB_PASSWORD: order_password
       INVENTORY_BASE_URL: http://inventory-service:8082
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      ZIPKIN_ENDPOINT: http://zipkin:9411/api/v2/spans
     depends_on:
-      - order-db
-      - inventory-service
+      order-db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      zipkin:
+        condition: service_started
     ports:
       - "8084:8084"
+
+  payment-service:
+    build:
+      context: ./payment-service
+    environment:
+      DB_URL: jdbc:postgresql://payment-db:5432/payment_db
+      DB_USERNAME: payment_user
+      DB_PASSWORD: payment_password
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      ZIPKIN_ENDPOINT: http://zipkin:9411/api/v2/spans
+    depends_on:
+      payment-db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      zipkin:
+        condition: service_started
+    ports:
+      - "8085:8085"
+
+  shipping-service:
+    build:
+      context: ./shipping-service
+    environment:
+      DB_URL: jdbc:postgresql://shipping-db:5432/shipping_db
+      DB_USERNAME: shipping_user
+      DB_PASSWORD: shipping_password
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      ZIPKIN_ENDPOINT: http://zipkin:9411/api/v2/spans
+    depends_on:
+      shipping-db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      zipkin:
+        condition: service_started
+    ports:
+      - "8086:8086"
 
 volumes:
   product-db-data:
   inventory-db-data:
   cart-db-data:
   order-db-data:
+  payment-db-data:
+  shipping-db-data:

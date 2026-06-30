@@ -11,12 +11,51 @@ spring:
     url: ${DB_URL:jdbc:postgresql://localhost:5434/inventory_db}
     username: ${DB_USERNAME:inventory_user}
     password: ${DB_PASSWORD:inventory_password}
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+    template:
+      observation-enabled: true
+    consumer:
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      auto-offset-reset: earliest
+      group-id: inventory-service
+    listener:
+      observation-enabled: true
   jpa:
     hibernate:
       ddl-auto: validate
     open-in-view: false
   flyway:
     enabled: true
+
+app:
+  kafka:
+    topics:
+      order-events: order.events
+      inventory-events: inventory.events
+      payment-events: payment.events
+      shipping-events: shipping.events
+      dead-letter-events: dead-letter.events
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  tracing:
+    sampling:
+      probability: 1.0
+  zipkin:
+    tracing:
+      endpoint: ${ZIPKIN_ENDPOINT:http://localhost:9411/api/v2/spans}
 
 springdoc:
   swagger-ui:

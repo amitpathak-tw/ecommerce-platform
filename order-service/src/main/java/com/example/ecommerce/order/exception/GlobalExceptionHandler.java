@@ -24,6 +24,20 @@ public class GlobalExceptionHandler {
         return error(HttpStatus.CONFLICT, "ORDER_PLACEMENT_FAILED", exception.getMessage(), request, Map.of());
     }
 
+    @ExceptionHandler(DependentServiceUnavailableException.class)
+    ResponseEntity<ErrorResponse> dependentServiceUnavailable(
+            DependentServiceUnavailableException exception,
+            HttpServletRequest request
+    ) {
+        return error(
+                HttpStatus.SERVICE_UNAVAILABLE,
+                "DEPENDENT_SERVICE_UNAVAILABLE",
+                exception.getMessage(),
+                request,
+                Map.of()
+        );
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     ResponseEntity<ErrorResponse> requestBodyValidation(
             MethodArgumentNotValidException exception,

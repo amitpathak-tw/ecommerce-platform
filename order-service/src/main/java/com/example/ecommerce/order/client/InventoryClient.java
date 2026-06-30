@@ -1,7 +1,10 @@
 package com.example.ecommerce.order.client;
 
 import com.example.ecommerce.order.dto.request.OrderRequestItem;
+import com.example.ecommerce.order.exception.DependentServiceUnavailableException;
 import com.example.ecommerce.order.exception.OrderPlacementException;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.retry.annotation.Retry;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -18,6 +21,8 @@ public class InventoryClient {
         this.inventoryRestClient = inventoryRestClient;
     }
 
+    @Retry(name = "inventoryServiceRetry")
+    @CircuitBreaker(name = "inventoryServiceCircuitBreaker", fallbackMethod = "reserveFallback")
     public void reserve(List<OrderRequestItem> items) {
         try {
             inventoryRestClient.post()
@@ -33,6 +38,13 @@ public class InventoryClient {
         } catch (RestClientException exception) {
             throw new OrderPlacementException("Inventory reservation failed", exception);
         }
+    }
+
+    private void reserveFallback(List<OrderRequestItem> items, Throwable exception) {
+        throw new DependentServiceUnavailableException(
+                "Inventory service is temporarily unavailable. Please try again later.",
+                exception
+        );
     }
 
     private record ReserveInventoryRequest(List<InventoryRequestItem> items) {
